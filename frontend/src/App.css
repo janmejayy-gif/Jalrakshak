@@ -209,6 +209,130 @@ code {
   font-size: 0.875rem;
 }
 
+.status-up {
+  background-color: var(--color-success) !important;
+  color: white !important;
+}
+
+.status-degraded {
+  background-color: var(--color-warning) !important;
+  color: white !important;
+}
+
+.status-down {
+  background-color: var(--color-error) !important;
+  color: white !important;
+}
+
+.status-loading {
+  display: inline-block;
+  padding: 8px 16px;
+  background-color: var(--color-text-secondary);
+  color: white;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.health-details {
+  margin-top: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.health-details summary {
+  padding: 12px 16px;
+  background-color: var(--color-background);
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.health-details pre {
+  padding: 16px;
+  margin: 0;
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  max-height: 300px;
+}
+
+.health-link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 8px 16px;
+  background-color: var(--color-secondary);
+  color: white;
+  border-radius: var(--radius-md);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: background-color 0.2s ease;
+}
+
+.health-link:hover {
+  background-color: var(--color-secondary-light);
+  color: white;
+}
+
+.endpoint-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+  margin-top: 24px;
+}
+
+.endpoint-card {
+  background-color: var(--color-background);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.endpoint-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.endpoint-card ul {
+  list-style: none;
+  padding: 0;
+}
+
+.endpoint-card li {
+  margin-bottom: 10px;
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.endpoint-card code {
+  background-color: var(--color-surface);
+  color: var(--color-primary);
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.alert {
+  padding: 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 24px;
+  font-weight: 500;
+}
+
+.alert-error {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+}
+
 @media (max-width: 768px) {
   .app-header h1 {
     font-size: 2rem;

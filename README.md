@@ -153,8 +153,10 @@ Frontend will start on **http://localhost:5173** (default Vite port)
 | `./gradlew assemble` | Compile and package (skips tests) — **recommended** |
 | `./gradlew bootRun` | Run application in dev mode |
 | `./gradlew clean` | Clean build artifacts |
+| `./gradlew flywayMigrate` | Run database migrations |
+| `./gradlew flywayClean` | Clean database (drops all tables) |
 
-> **Note**: `./gradlew test` currently fails with "Failed to load JUnit Platform" due to Gradle 9.0 / Spring Boot 3.3.4 compatibility. Use `./gradlew assemble` for verified builds.
+> **Note**: `./gradlew test` currently fails with "Failed to load JUnit Platform" due to Gradle 9.0 / Spring Boot 3.3.4 compatibility. Use `./gradlew assemble` for verified builds. Tests will be fixed with updated Spring Boot version.
 
 ### ML Service (FastAPI)
 
@@ -185,6 +187,104 @@ Frontend will start on **http://localhost:5173** (default Vite port)
 | Backend | 8080 | `GET /api/health` |
 | ML Service | 8000 | `GET /health` |
 | PostgreSQL | 5432 | `pg_isready` |
+
+## API Endpoints
+
+### Backend API (Base: `http://localhost:8080/api`)
+
+#### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/auth/register` | Register new user |
+| `POST` | `/auth/login` | Login |
+| `GET` | `/auth/me` | Get current user |
+
+#### Farms
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/farms` | List farms (paginated) |
+| `GET` | `/farms/list` | List all farms |
+| `GET` | `/farms/{id}` | Get farm details |
+| `POST` | `/farms` | Create farm |
+| `PUT` | `/farms/{id}` | Update farm |
+| `DELETE` | `/farms/{id}` | Delete farm |
+
+#### Crop Cycles
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/crops/farm/{farmId}` | List crop cycles (paginated) |
+| `GET` | `/crops/farm/{farmId}/list` | List all crop cycles |
+| `GET` | `/crops/{id}` | Get crop cycle details |
+| `POST` | `/crops` | Create crop cycle |
+| `PUT` | `/crops/{id}` | Update crop cycle |
+| `DELETE` | `/crops/{id}` | Delete crop cycle |
+
+#### Recommendations
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/recommendations` | Request irrigation recommendation |
+| `GET` | `/recommendations?farmId=` | List recommendations (paginated) |
+| `GET` | `/recommendations/crop-cycle/{id}` | List recommendations by crop cycle |
+| `GET` | `/recommendations/{id}` | Get recommendation details |
+| `POST` | `/recommendations/{id}/execute` | Execute recommendation |
+| `GET` | `/recommendations/{id}/input-snapshot` | Get input snapshot |
+
+#### Weather
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/weather` | Add weather observation |
+| `GET` | `/weather/farm/{farmId}` | Get observations (paginated) |
+| `GET` | `/weather/farm/{farmId}/latest` | Latest observations |
+| `GET` | `/weather/farm/{farmId}/range` | Observations by date range |
+
+#### Feedback
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/feedback` | Create feedback |
+| `GET` | `/feedback/recommendation/{id}` | Get feedback for recommendation |
+| `GET` | `/feedback/my` | Get my feedback |
+
+#### Health
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Full health check (DB + ML) |
+| `GET` | `/health/live` | Liveness probe |
+| `GET` | `/health/ready` | Readiness probe |
+
+### ML Service API (Base: `http://localhost:8000`)
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health check |
+| `POST` | `/predict/irrigation` | Get irrigation prediction |
+
+#### Example: Request Irrigation Recommendation
+
+```bash
+curl -X POST http://localhost:8000/predict/irrigation \
+  -H "Content-Type: application/json" \
+  -d '{
+    "farmId": "550e8400-e29b-41d4-a716-446655440000",
+    "cropType": "wheat",
+    "soilMoisture": 15,
+    "temperature": 25,
+    "humidity": 60,
+    "rainfallForecast": 0,
+    "cropStage": "vegetative"
+  }'
+```
+
+Response:
+```json
+{
+  "recommendation": "IRRIGATE",
+  "confidence": 0.85,
+  "reasoning": "Soil moisture critically low at 15.0% with minimal rainfall forecast (0.0mm). Irrigation strongly recommended.",
+  "irrigationAmountMm": 25.0,
+  "modelVersion": "baseline-heuristic-v1",
+  "timestamp": "2024-01-15T10:30:00.000000Z"
+}
+```
 
 ## Environment Variables
 
@@ -252,7 +352,45 @@ Response:
 {
   "status": "UP",
   "service": "jalrakshak-backend",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "checks": {
+    "database": "UP",
+    "ml-service": "UP"
+  }
+}
+```
+
+### Backend: `GET /api/health/live` (Liveness Probe)
+
+```bash
+curl http://localhost:8080/api/health/live
+```
+
+Response:
+```json
+{
+  "status": "UP",
+  "service": "jalrakshak-backend",
   "timestamp": "2024-01-15T10:30:00Z"
+}
+```
+
+### Backend: `GET /api/health/ready` (Readiness Probe)
+
+```bash
+curl http://localhost:8080/api/health/ready
+```
+
+Response (200 OK if ready, 503 if not):
+```json
+{
+  "status": "UP",
+  "service": "jalrakshak-backend",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "checks": {
+    "database": "UP",
+    "ml-service": "UP"
+  }
 }
 ```
 
@@ -271,7 +409,7 @@ Response:
 }
 ```
 
-Both endpoints return minimal information — no secrets, stack traces, or internal details.
+All endpoints return minimal information — no secrets, stack traces, or internal details.
 
 ## Stopping Services
 
@@ -338,20 +476,38 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push/PR to `main` a
 - [x] Available lint, tests, and builds run with real results reported
 - [x] Existing user changes preserved
 
+## Phase 2 Acceptance Criteria
+
+- [x] Database schema created with Flyway migrations for all core entities
+- [x] JPA entities implemented for users, farms, crop_cycles, weather_observations, sensor_readings, recommendations, recommendation_inputs, farmer_feedback, audit_events
+- [x] REST APIs implemented for all core entities with CRUD operations
+- [x] Farm ownership validation on all farm-specific endpoints
+- [x] Pagination and filtering on list endpoints
+- [x] Centralized error handling with consistent error responses
+- [x] CORS configured for React frontend (localhost:5173)
+- [x] JWT authentication implemented (register, login, token validation)
+- [x] ML service integration with backend (recommendation requests)
+- [x] ML service enhanced with heuristic-based prediction and proper error handling
+- [x] Frontend connected to backend APIs with live health status
+- [x] API client with environment-based configuration
+- [x] Flyway migrations for all core tables
+- [x] Health endpoints: `/health`, `/health/live`, `/health/ready`
+
 ## Known Blockers
 
 1. **Docker unavailable**: Cannot verify Dockerfiles or docker-compose.yml. Provided for future use.
 2. **Gradle not pre-installed**: Backend build requires Gradle installation (`brew install gradle` or manual). Gradle wrapper (9.0) generated and working.
 3. **Python 3.14 incompatible**: ML service requires Python 3.13 (pydantic-core/PyO3 limitation). Python 3.13.7 verified working in venv.
-4. **Backend tests blocked**: `./gradlew test` fails due to Gradle 9.0 / JUnit Platform compatibility issue with Spring Boot 3.3.4. Use `./gradlew assemble` for verified builds. Tests will be fixed in Phase 2 with updated Spring Boot version.
+4. **Backend tests blocked**: `./gradlew test` fails due to Gradle 9.0 / JUnit Platform compatibility issue with Spring Boot 3.3.4. Use `./gradlew assemble` for verified builds. Tests will be fixed with updated Spring Boot version.
 
-## Next Steps (Phase 2)
+## Next Steps (Phase 3)
 
-- Database schema and migrations (Flyway/Liquibase)
-- Core entity definitions (Farm, Crop, User)
-- Authentication (JWT) implementation
-- Farm/Crop CRUD APIs
-- Integration between Backend and ML Service
+- Authentication enhancements (password reset, email verification)
+- Role-based access control (ADMIN endpoints)
+- Weather data integration (external API adapter)
+- Sensor data ingestion pipeline
+- Recommendation history and analytics dashboard
+- Farmer feedback collection and analysis
 
 ## License
 

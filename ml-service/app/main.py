@@ -1,9 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+from datetime import datetime, UTC
 
 from app.config import settings
-from app.routes import health, predict
+from app.routes import predict
 
 
 @asynccontextmanager
@@ -30,7 +31,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(predict.router, prefix="/predict", tags=["predict"])
 
 
@@ -40,4 +40,13 @@ async def root():
         "service": "jalrakshak-ml-service",
         "version": settings.model_version,
         "status": "running",
+    }
+
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "service": "jalrakshak-ml-service",
+        "timestamp": datetime.now(UTC).isoformat(),
     }
