@@ -1,0 +1,88 @@
+# Root .gitignore for JALRAKSHAK
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Environment files (secrets)
+.env
+.env.local
+.env.*.local
+*.env
+*.env.*
+
+# Build artifacts
+build/
+dist/
+out/
+target/
+*.log
+
+# Dependency directories
+node_modules/
+**/node_modules/
+backend/build/
+backend/.gradle/
+ml-service/__pycache__/
+ml-service/.pytest_cache/
+ml-service/*.pyc
+ml-service/*.pyo
+ml-service/*.pyd
+ml-service/.coverage
+ml-service/htmlcov/
+ml-service/.mypy_cache/
+ml-service/.ruff_cache/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.dump
+*.sql
+postgresql/data/
+*.pgdump
+
+# Docker
+.docker/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+temp/
+
+# Certificates and keys
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.jks
+
+# OS-specific
+*.orig
+*.bak

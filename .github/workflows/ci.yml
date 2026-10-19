@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  backend:
+    name: Backend (Spring Boot)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build with Gradle
+        run: ./gradlew build --no-daemon
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+  ml-service:
+    name: ML Service (FastAPI)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ml-service
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+
+      - name: Run linting (ruff)
+        run: |
+          source venv/bin/activate
+          ruff check app/ tests/
+
+      - name: Run type checking (mypy)
+        run: |
+          source venv/bin/activate
+          mypy app/
+
+      - name: Run tests
+        run: |
+          source venv/bin/activate
+          pytest tests/ -v
+
+  frontend:
+    name: Frontend (React/Vite)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting (oxlint)
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  # This job runs only if all above jobs succeed
+  # It can be extended to deploy or run integration tests
+  summary:
+    name: Summary
+    runs-on: ubuntu-latest
+    needs: [backend, ml-service, frontend]
+    if: always()
+    steps:
+      - name: Check job statuses
+        run: |
+          echo "Backend: ${{ needs.backend.result }}"
+          echo "ML Service: ${{ needs.ml-service.result }}"
+          echo "Frontend: ${{ needs.frontend.result }}"
+          if [[ "${{ needs.backend.result }}" != "success" ]] || [[ "${{ needs.ml-service.result }}" != "success" ]] || [[ "${{ needs.frontend.result }}" != "success" ]]; then
+            echo "One or more jobs failed"
+            exit 1
+          fi

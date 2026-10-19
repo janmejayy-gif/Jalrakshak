@@ -1,0 +1,25 @@
+# Infrastructure .gitignore
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+*.env
+*.env.*
+
+# Docker
+.docker/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.tfplan
+.terraform/
+
+# Certificates
+*.pem
+*.key
+*.crt

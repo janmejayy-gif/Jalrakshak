@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: jalrakshak-backend
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/jalrakshak}
+    username: ${SPRING_DATASOURCE_USERNAME:postgres}
+    password: ${SPRING_DATASOURCE_PASSWORD:postgres}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    show-sql: ${SPRING_JPA_SHOW_SQL:false}
+    properties:
+      hibernate:
+        format_sql: ${SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL:true}
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: ${SERVER_PORT:8080}
+
+jwt:
+  secret: ${JWT_SECRET:your_jwt_secret_key_at_least_32_characters_long}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+ml-service:
+  url: ${ML_SERVICE_URL:http://localhost:8000}
+
+weather:
+  api-key: ${WEATHER_API_KEY:}
+  base-url: ${WEATHER_API_BASE_URL:https://api.weather.example.com}
+
+logging:
+  level:
+    root: ${LOGGING_LEVEL_ROOT:INFO}
+    com.jalrakshak: ${LOGGING_LEVEL_COM_JALRAKSHAK:DEBUG}

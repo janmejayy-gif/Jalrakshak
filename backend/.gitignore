@@ -1,0 +1,49 @@
+# Backend .gitignore (Java/Spring Boot)
+
+# Build outputs
+build/
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Gradle
+.gradle/
+gradlew
+gradlew.bat
+gradle/wrapper/gradle-wrapper.jar
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.classpath
+.project
+.settings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+
+# Test reports
+test-results/
+jacoco/
+
+# Temporary
+*.tmp
+*.orig
