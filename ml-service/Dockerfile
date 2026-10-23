@@ -14,7 +14,6 @@ RUN groupadd -r appuser && useradd -r -g appuser appuser
 COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY app/ app/
-COPY .env.example .env
 USER appuser
 EXPOSE 8000
 ENV PYTHONUNBUFFERED=1

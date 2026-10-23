@@ -215,18 +215,51 @@ class ApiClient {
     }
   }
 
+  
   async predictIrrigation(data) {
     try {
       const response = await fetch(`${ML_SERVICE_URL}/predict/irrigation`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(data),
       });
-      return response.ok ? await response.json() : { error: 'Prediction failed' };
-    } catch {
-      return { error: 'ML service unavailable' };
+
+      const result = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        const detail = result?.detail;
+
+        let message = 'Prediction failed. Please try again.';
+
+        if (typeof detail === 'string') {
+          message = detail;
+        } else if (Array.isArray(detail)) {
+          message = detail
+            .map((item) => `${item.loc?.join('.') ?? 'Field'}: ${item.msg}`)
+            .join('; ');
+        } else if (typeof result?.message === 'string') {
+          message = result.message;
+        }
+
+        throw new Error(message);
+      }
+
+      if (!result || result.error) {
+        throw new Error(result?.error || 'Invalid response from ML service.');
+      }
+
+      return result;
+    } catch (error) {
+      if (error instanceof TypeError) {
+        throw new Error('Cannot connect to ML service. Check that it is running.');
+      }
+
+      throw error;
     }
   }
+
 }
 
 export const apiClient = new ApiClient();

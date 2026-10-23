@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import './App.css';
 import { apiClient } from './api/client';
+import IrrigationPrediction from './components/IrrigationPrediction';
 
 function App() {
   const [health, setHealth] = useState(null);
@@ -130,6 +131,7 @@ function App() {
               )}
             </div>
           </section>
+          <IrrigationPrediction />
           <section className="info">
             <h2>API Endpoints</h2>
             <div className="endpoint-grid">
