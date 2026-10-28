@@ -4,11 +4,12 @@ const ML_SERVICE_URL = import.meta.env.VITE_ML_SERVICE_URL || 'http://localhost:
 class ApiClient {
   constructor(baseUrl = API_BASE_URL) {
     this.baseUrl = baseUrl;
-    this.token = localStorage.getItem('auth_token');
+    this.token = typeof localStorage !== 'undefined' ? localStorage.getItem('auth_token') : null;
   }
 
   setToken(token) {
     this.token = token;
+    if (typeof localStorage === 'undefined') return;
     if (token) {
       localStorage.setItem('auth_token', token);
     } else {
@@ -38,16 +39,15 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (response.status === 401) {
         this.setToken(null);
-        window.location.href = '/login';
-        throw new Error('Unauthorized');
+        throw new Error('Unauthorized — please login via the top-right Login button');
       }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({ message: 'Request failed' }));
-        throw new Error(error.message || `HTTP ${response.status}`);
+        throw new Error(error.message || error.detail || `HTTP ${response.status}`);
       }
 
       if (response.status === 204) {
@@ -65,7 +65,11 @@ class ApiClient {
 
   // Auth
   async register(data) {
-    return this.request('/auth/register', { method: 'POST', body: data });
+    const result = await this.request('/auth/register', { method: 'POST', body: data });
+    if (result?.accessToken) {
+      this.setToken(result.accessToken);
+    }
+    return result;
   }
 
   async login(data) {
@@ -80,8 +84,18 @@ class ApiClient {
     return this.request('/auth/me');
   }
 
-  logout() {
-    this.setToken(null);
+  async forgotPassword(email) {
+    return this.request('/auth/forgot-password', { method: 'POST', body: { email } });
+  }
+
+  async logout() {
+    try {
+      if (this.token) {
+        await this.request('/auth/logout', { method: 'POST' });
+      }
+    } finally {
+      this.setToken(null);
+    }
   }
 
   // Health
@@ -165,9 +179,9 @@ class ApiClient {
   }
 
   async executeRecommendation(id, executedBy) {
-    return this.request(`/recommendations/${id}/execute`, { 
-      method: 'POST', 
-      body: { executedBy } 
+    return this.request(`/recommendations/${id}/execute`, {
+      method: 'POST',
+      body: { executedBy },
     });
   }
 
@@ -215,7 +229,6 @@ class ApiClient {
     }
   }
 
-  
   async predictIrrigation(data) {
     try {
       const response = await fetch(`${ML_SERVICE_URL}/predict/irrigation`, {
@@ -230,7 +243,6 @@ class ApiClient {
 
       if (!response.ok) {
         const detail = result?.detail;
-
         let message = 'Prediction failed. Please try again.';
 
         if (typeof detail === 'string') {
@@ -255,11 +267,9 @@ class ApiClient {
       if (error instanceof TypeError) {
         throw new Error('Cannot connect to ML service. Check that it is running.');
       }
-
       throw error;
     }
   }
-
 }
 
 export const apiClient = new ApiClient();
