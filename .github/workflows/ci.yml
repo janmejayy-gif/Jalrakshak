@@ -23,15 +23,15 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
+          cache-dependency-path: |
+            backend/*.gradle*
+            backend/gradle/wrapper/gradle-wrapper.properties
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build with Gradle
+      - name: Build and test with Gradle
         run: ./gradlew build --no-daemon
-
-      - name: Run tests
-        run: ./gradlew test --no-daemon
 
   ml-service:
     name: ML Service (FastAPI)
@@ -48,6 +48,7 @@ jobs:
         with:
           python-version: '3.13'
           cache: 'pip'
+          cache-dependency-path: ml-service/requirements.txt
 
       - name: Install dependencies
         run: |
@@ -83,8 +84,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -98,8 +100,6 @@ jobs:
       - name: Build
         run: npm run build
 
-  # This job runs only if all above jobs succeed
-  # It can be extended to deploy or run integration tests
   summary:
     name: Summary
     runs-on: ubuntu-latest
