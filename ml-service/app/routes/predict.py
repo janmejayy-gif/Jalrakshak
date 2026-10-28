@@ -37,6 +37,7 @@ async def predict_irrigation(request: IrrigationRequest):
         # Simple heuristic-based recommendation (baseline)
         soil_moisture = request.soilMoisture
         rainfall_forecast = request.rainfallForecast
+        recommendation: Literal["IRRIGATE", "WAIT", "PARTIAL_IRRIGATION", "INSUFFICIENT_DATA"]
         
         if soil_moisture < 20 and rainfall_forecast < 5:
             recommendation = "IRRIGATE"
