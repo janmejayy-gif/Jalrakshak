@@ -86,3 +86,6 @@ temp/
 # OS-specific
 *.orig
 *.bak
+
+# System Files
+.impeccable/*

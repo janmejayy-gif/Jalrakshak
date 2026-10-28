@@ -1,264 +1,196 @@
+<!-- prettier-ignore -->
+<div align="center">
+
+<img src="./frontend/public/favicon.svg" alt="JALRAKSHAK Logo" align="center" height="64" />
+
 # JALRAKSHAK
 
-Smart Irrigation Decision-Support Platform — Part of the KrishiSetu Initiative
+**Smart Irrigation Decision-Support Platform — Part of the KrishiSetu Initiative**
+
+![Java 21](https://img.shields.io/badge/Java-21_LTS-ED8B00?style=flat-square&logo=openjdk&logoColor=white)
+![Spring Boot](https://img.shields.io/badge/Spring_Boot-3.3.4-6DB33F?style=flat-square&logo=springboot&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?style=flat-square&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-3.13-3776AB?style=flat-square&logo=python&logoColor=white)
+![React](https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-8-646CFF?style=flat-square&logo=vite&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat-square&logo=postgresql&logoColor=white)
+
+[Overview](#overview) • [Architecture](#architecture) • [Getting Started](#getting-started) • [API Reference](#api-reference) • [Configuration](#configuration) • [Troubleshooting](#troubleshooting)
+
+</div>
+
+JALRAKSHAK (*जलक्षक — Water Guardian*) is an AI-assisted smart irrigation decision-support platform designed for smallholder and commercial multi-crop farmers. It combines farm profiles, active crop cycles, soil-moisture readings, and weather observations to deliver explainable field-level irrigation recommendations (`IRRIGATE`, `PARTIAL_IRRIGATION`, `WAIT`, or `INSUFFICIENT_DATA`) while keeping final decision authority with the farmer.
+
+> [!TIP]
+> You can run the entire stack locally using Docker Compose or directly on your host machine with PostgreSQL, Java 21, Python 3.13, and Node.js 20+.
 
 ## Overview
 
-JALRAKSHAK is a production-minded smart irrigation decision-support application that helps farmers make informed irrigation decisions. The system consists of three services:
+Unlike black-box irrigation controllers or generic weather dashboards, JALRAKSHAK separates machine-learning inference from an explainable agronomic decision layer. Every recommendation records its input snapshot, confidence score, model version, and human-readable reasoning—falling back conservatively to `INSUFFICIENT_DATA` whenever weather or soil telemetry is missing or stale.
 
-- **Frontend**: React + Vite (TypeScript-ready)
-- **Backend**: Java Spring Boot 3.3 (Java 21)
-- **ML Service**: Python FastAPI (Python 3.13)
+### Key Features
 
-Database: PostgreSQL 16
+- **Explainable Irrigation Recommendations**: Generates actionable guidance (`IRRIGATE`, `PARTIAL_IRRIGATION`, `WAIT`, `INSUFFICIENT_DATA`) with water depth in millimeters (`mm`), confidence scores, and transparent reasoning.
+- **Multi-Crop & Field Management**: Track multiple farms, soil types, irrigation methods, and active crop cycles across growth stages (`GERMINATION`, `VEGETATIVE`, `FLOWERING`, `GRAIN_FILL`, `MATURITY`).
+- **Weather & Sensor Telemetry**: Record and query farm-specific weather observations and soil-moisture readings with freshness validation.
+- **Closed-Loop Farmer Feedback**: Log executed irrigation actions and field feedback against historical recommendations for auditing and model evaluation.
+- **Role-Based Security & JWT Auth**: Stateless JWT authentication with token revocation, password recovery, email verification, and strict farm-ownership validation.
+- **Live Health & Readiness Probes**: Built-in liveness and readiness endpoints monitoring PostgreSQL and ML inference connectivity.
 
-## Repository Structure
+## Architecture
 
-```
-jakrak/
-├── frontend/           # React + Vite application
-├── backend/            # Spring Boot application
-├── ml-service/         # FastAPI ML inference service
-├── infrastructure/     # Infrastructure configs (Docker, etc.)
-├── docs/               # Documentation
-├── .github/workflows/  # CI/CD pipelines
-├── docker-compose.yml  # Local orchestration (requires Docker)
-├── .gitignore
-├── .env.example        # Root environment template
-└── README.md
+```mermaid
+flowchart TD
+    Farmer([Farmer / Operator]) --> Frontend[React 19 + Vite Frontend<br/>Port 5173 / 3000]
+    Frontend -->|REST API / JSON| Backend[Spring Boot 3.3 Backend<br/>Port 8080]
+    Backend -->|JPA / Hibernate| DB[(PostgreSQL 16<br/>Port 5432)]
+    Backend -->|Inference Request| ML[FastAPI ML Service<br/>Port 8000]
+    Backend -->|Forecast & Observations| Weather[Weather Provider API]
 ```
 
-## Prerequisites
+The system is organized as a multi-service monorepo:
 
-| Tool | Version | Verified |
-|------|---------|----------|
-| Java (JDK) | 21 LTS (target) / 25.0.2 (runtime) | ✅ 25.0.2 |
-| Node.js | 20+ LTS | ✅ v26.7.0 |
-| npm | 10+ | ✅ 11.19.0 |
-| Python | 3.13 | ✅ 3.13.7 |
-| PostgreSQL | 16 | ✅ 16.15.1 (installed, running) |
-| Docker | 24+ | ❌ Not available |
-| Docker Compose | 2+ | ❌ Not available |
-| Gradle | 8.9+ (wrapper) | ✅ 9.0 (via wrapper) |
+| Directory | Service | Technology | Default Port |
+| :--- | :--- | :--- | :--- |
+| [`frontend/`](./frontend) | Web Application | React 19, Vite 8, Vitest, Oxlint | `5173` (dev) / `3000` (Docker) |
+| [`backend/`](./backend) | Core REST API | Java 21, Spring Boot 3.3, Spring Security, JPA | `8080` |
+| [`ml-service/`](./ml-service) | Inference Service | Python 3.13, FastAPI, Pydantic v2, Uvicorn | `8000` |
+| [`docs/`](./docs) | System Specifications | Architecture, Data Model, and API Specs | — |
 
-> **Note**: Docker is not available in the current development environment. Dockerfiles and docker-compose.yml are provided for future containerization but cannot be tested locally. Services must be run directly on the host.
-> **Note**: Backend runs on Java 25 but targets Java 21 bytecode compatibility via `--release 21`.
+## Getting Started
 
-## Quick Start (Without Docker)
+### Prerequisites
 
-### 1. Clone and Configure Environment
+- **Java (JDK)**: 21 LTS
+- **Node.js**: 20+ LTS (with `npm` 10+)
+- **Python**: 3.13
+- **PostgreSQL**: 16+
+- **Docker & Docker Compose**: Optional, for containerized execution
+
+### Option 1: Run with Docker Compose
+
+1. Create your root environment configuration:
+   ```bash
+   cp .env.example .env
+   ```
+2. Build and start all services:
+   ```bash
+   docker compose up --build
+   ```
+3. Access the services:
+   - **Frontend**: `http://localhost:3000`
+   - **Backend API**: `http://localhost:8080/api/health`
+   - **ML Service**: `http://localhost:8000/health`
+
+### Option 2: Run Locally (Host Environment)
+
+> [!IMPORTANT]
+> Ensure PostgreSQL 16 is running locally and a database named `jalrakshak` exists (`createdb jalrakshak`) before starting the backend.
+
+#### 1. Configure Environment Files
 
 ```bash
-# Copy environment templates
 cp .env.example .env
 cp backend/.env.example backend/.env
 cp ml-service/.env.example ml-service/.env
 cp frontend/.env.example frontend/.env.local
-
-# Edit each .env file with your actual values
-# NEVER commit .env files!
 ```
 
-### 2. Start PostgreSQL
-
-Install PostgreSQL 16 and create the database:
-
-```bash
-# macOS (Homebrew)
-brew install postgresql@16
-brew services start postgresql@16
-
-# Create database
-createdb jalrakshak
-```
-
-Or use any PostgreSQL 16 instance and update `SPRING_DATASOURCE_URL` in `backend/.env`.
-
-### 3. Start Backend (Spring Boot)
-
-```bash
-cd backend
-
-# Build (requires Gradle - not pre-installed)
-# If gradlew is missing, generate it: gradle wrapper --gradle-version 8.9
-./gradlew build --no-daemon
-
-# Run
-./gradlew bootRun --no-daemon
-```
-
-Backend will start on **http://localhost:8080**
-
-Health check: **GET http://localhost:8080/api/health**
-
-Expected response:
-```json
-{
-  "status": "UP",
-  "service": "jalrakshak-backend",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### 4. Start ML Service (FastAPI)
+#### 2. Start the ML Service (FastAPI)
 
 ```bash
 cd ml-service
-
-# Create virtual environment
 python3.13 -m venv venv
 source venv/bin/activate
-
-# Install dependencies
 pip install -r requirements.txt
-
-# Run
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-ML Service will start on **http://localhost:8000**
+#### 3. Start the Backend (Spring Boot)
 
-Health check: **GET http://localhost:8000/health**
-
-Expected response:
-```json
-{
-  "status": "healthy",
-  "service": "jalrakshak-ml-service",
-  "timestamp": "2024-01-15T10:30:00.000000Z"
-}
+```bash
+cd backend
+./gradlew bootRun --no-daemon
 ```
 
-### 5. Start Frontend (React + Vite)
+> [!NOTE]
+> If you are running on a newer host JDK (such as Java 25) with Gradle 9.0, `./gradlew test` may encounter a JUnit Platform compatibility issue with Spring Boot 3.3.4. Use `./gradlew assemble --no-daemon` to compile and package the backend without running the test task, or run with JDK 21.
+
+#### 4. Start the Frontend (React + Vite)
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Run development server
 npm run dev
 ```
 
-Frontend will start on **http://localhost:5173** (default Vite port)
+Open `http://localhost:5173` in your browser to view the application dashboard and live service status.
 
-## Available Commands
+## Development Commands
 
-### Backend (Spring Boot)
+| Service | Task | Command |
+| :--- | :--- | :--- |
+| **Backend** | Compile & package | `./gradlew assemble --no-daemon` |
+| **Backend** | Run development server | `./gradlew bootRun --no-daemon` |
+| **Backend** | Run unit tests (JDK 21) | `./gradlew test --no-daemon` |
+| **ML Service** | Lint code | `ruff check app/ tests/` |
+| **ML Service** | Type check | `mypy app/` |
+| **ML Service** | Run test suite | `pytest tests/ -v` |
+| **Frontend** | Lint code | `npm run lint` |
+| **Frontend** | Run unit tests | `npm test` |
+| **Frontend** | Production build | `npm run build` |
 
-| Command | Description |
-|---------|-------------|
-| `./gradlew build` | Build project (compile, test, package) — tests may fail due to Gradle 9/JUnit Platform compat issue |
-| `./gradlew assemble` | Compile and package (skips tests) — **recommended** |
-| `./gradlew bootRun` | Run application in dev mode |
-| `./gradlew clean` | Clean build artifacts |
-| `./gradlew flywayMigrate` | Run database migrations |
-| `./gradlew flywayClean` | Clean database (drops all tables) |
+## API Reference
 
-> **Note**: `./gradlew test` currently fails with "Failed to load JUnit Platform" due to Gradle 9.0 / Spring Boot 3.3.4 compatibility. Use `./gradlew assemble` for verified builds. Tests will be fixed with updated Spring Boot version.
+### Backend REST API (`http://localhost:8080/api`)
 
-### ML Service (FastAPI)
+| Category | Method | Endpoint | Description |
+| :--- | :--- | :--- | :--- |
+| **Auth** | `POST` | `/auth/register` | Register a new user account |
+| | `POST` | `/auth/login` | Authenticate and receive a JWT access token |
+| | `POST` | `/auth/logout` | Revoke the active JWT token |
+| | `GET` | `/auth/me` | Retrieve the authenticated user profile |
+| | `POST` | `/auth/forgot-password` | Initiate password reset flow |
+| | `POST` | `/auth/reset-password` | Complete password reset with token |
+| | `POST` | `/auth/verify-email` | Verify user email address |
+| | `POST` | `/auth/resend-verification` | Resend email verification link |
+| **Farms** | `GET` | `/farms` | List farms for the current user (paginated) |
+| | `GET` | `/farms/list` | List all farms for the current user |
+| | `POST` | `/farms` | Create a new farm profile |
+| | `GET` | `/farms/{id}` | Get farm details by ID |
+| | `PUT` | `/farms/{id}` | Update farm configuration |
+| | `DELETE` | `/farms/{id}` | Delete a farm |
+| **Crop Cycles** | `GET` | `/crops/farm/{farmId}` | List crop cycles for a farm (paginated) |
+| | `GET` | `/crops/farm/{farmId}/list` | List all crop cycles for a farm |
+| | `POST` | `/crops` | Start a new crop cycle |
+| | `GET` | `/crops/{id}` | Get crop cycle details |
+| | `PUT` | `/crops/{id}` | Update crop cycle stage or status |
+| | `DELETE` | `/crops/{id}` | Delete a crop cycle |
+| **Recommendations** | `POST` | `/recommendations` | Generate a new irrigation recommendation |
+| | `GET` | `/recommendations?farmId=` | List recommendations for a farm (paginated) |
+| | `GET` | `/recommendations/crop-cycle/{id}` | List recommendations by crop cycle |
+| | `GET` | `/recommendations/{id}` | Get recommendation details |
+| | `POST` | `/recommendations/{id}/execute` | Mark a recommendation as executed |
+| | `GET` | `/recommendations/{id}/input-snapshot` | Retrieve the input snapshot for a recommendation |
+| **Weather** | `POST` | `/weather` | Record a weather observation |
+| | `GET` | `/weather/farm/{farmId}` | List weather observations (paginated) |
+| | `GET` | `/weather/farm/{farmId}/latest` | Get latest weather observations for a farm |
+| | `GET` | `/weather/farm/{farmId}/range` | Query weather observations by date range |
+| **Feedback** | `POST` | `/feedback` | Submit farmer feedback on a recommendation |
+| | `GET` | `/feedback/recommendation/{id}` | Get feedback for a specific recommendation |
+| | `GET` | `/feedback/my` | List feedback submitted by the current user |
+| **Health** | `GET` | `/health` | Composite health status (Database + ML service) |
+| | `GET` | `/health/live` | Liveness probe |
+| | `GET` | `/health/ready` | Readiness probe |
 
-| Command | Description |
-|---------|-------------|
-| `pip install -r requirements.txt` | Install Python dependencies |
-| `ruff check app/ tests/` | Run linting |
-| `mypy app/` | Run type checking |
-| `pytest tests/ -v` | Run tests |
-| `uvicorn app.main:app --reload` | Run development server |
-
-### Frontend (React + Vite)
-
-| Command | Description |
-|---------|-------------|
-| `npm install` | Install dependencies |
-| `npm run dev` | Start development server |
-| `npm run build` | Build for production |
-| `npm run lint` | Run oxlint |
-| `npm test` | Run tests (vitest) |
-| `npm run preview` | Preview production build |
-
-## Ports
-
-| Service | Port | Health Endpoint |
-|---------|------|-----------------|
-| Frontend | 5173 (dev) / 3000 (Docker) | N/A |
-| Backend | 8080 | `GET /api/health` |
-| ML Service | 8000 | `GET /health` |
-| PostgreSQL | 5432 | `pg_isready` |
-
-## API Endpoints
-
-### Backend API (Base: `http://localhost:8080/api`)
-
-#### Authentication
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/auth/register` | Register new user |
-| `POST` | `/auth/login` | Login |
-| `GET` | `/auth/me` | Get current user |
-
-#### Farms
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/farms` | List farms (paginated) |
-| `GET` | `/farms/list` | List all farms |
-| `GET` | `/farms/{id}` | Get farm details |
-| `POST` | `/farms` | Create farm |
-| `PUT` | `/farms/{id}` | Update farm |
-| `DELETE` | `/farms/{id}` | Delete farm |
-
-#### Crop Cycles
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/crops/farm/{farmId}` | List crop cycles (paginated) |
-| `GET` | `/crops/farm/{farmId}/list` | List all crop cycles |
-| `GET` | `/crops/{id}` | Get crop cycle details |
-| `POST` | `/crops` | Create crop cycle |
-| `PUT` | `/crops/{id}` | Update crop cycle |
-| `DELETE` | `/crops/{id}` | Delete crop cycle |
-
-#### Recommendations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/recommendations` | Request irrigation recommendation |
-| `GET` | `/recommendations?farmId=` | List recommendations (paginated) |
-| `GET` | `/recommendations/crop-cycle/{id}` | List recommendations by crop cycle |
-| `GET` | `/recommendations/{id}` | Get recommendation details |
-| `POST` | `/recommendations/{id}/execute` | Execute recommendation |
-| `GET` | `/recommendations/{id}/input-snapshot` | Get input snapshot |
-
-#### Weather
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/weather` | Add weather observation |
-| `GET` | `/weather/farm/{farmId}` | Get observations (paginated) |
-| `GET` | `/weather/farm/{farmId}/latest` | Latest observations |
-| `GET` | `/weather/farm/{farmId}/range` | Observations by date range |
-
-#### Feedback
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/feedback` | Create feedback |
-| `GET` | `/feedback/recommendation/{id}` | Get feedback for recommendation |
-| `GET` | `/feedback/my` | Get my feedback |
-
-#### Health
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Full health check (DB + ML) |
-| `GET` | `/health/live` | Liveness probe |
-| `GET` | `/health/ready` | Readiness probe |
-
-### ML Service API (Base: `http://localhost:8000`)
+### ML Inference API (`http://localhost:8000`)
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/health` | Health check |
-| `POST` | `/predict/irrigation` | Get irrigation prediction |
+| :--- | :--- | :--- |
+| `GET` | `/health` | ML service health check |
+| `POST` | `/predict/irrigation` | Generate an irrigation prediction from field telemetry |
 
-#### Example: Request Irrigation Recommendation
+#### Example Prediction Request
 
 ```bash
 curl -X POST http://localhost:8000/predict/irrigation \
@@ -266,15 +198,14 @@ curl -X POST http://localhost:8000/predict/irrigation \
   -d '{
     "farmId": "550e8400-e29b-41d4-a716-446655440000",
     "cropType": "wheat",
-    "soilMoisture": 15,
-    "temperature": 25,
-    "humidity": 60,
-    "rainfallForecast": 0,
+    "soilMoisture": 15.0,
+    "temperature": 25.0,
+    "humidity": 60.0,
+    "rainfallForecast": 0.0,
     "cropStage": "vegetative"
   }'
 ```
 
-Response:
 ```json
 {
   "recommendation": "IRRIGATE",
@@ -282,233 +213,51 @@ Response:
   "reasoning": "Soil moisture critically low at 15.0% with minimal rainfall forecast (0.0mm). Irrigation strongly recommended.",
   "irrigationAmountMm": 25.0,
   "modelVersion": "baseline-heuristic-v1",
-  "timestamp": "2024-01-15T10:30:00.000000Z"
+  "timestamp": "2026-10-28T10:30:00.000000Z"
 }
 ```
 
-## Environment Variables
+## Configuration
 
-### Root (.env)
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `DATABASE_URL` | PostgreSQL connection string | Yes |
-| `DB_HOST` | Database host | Yes |
-| `DB_PORT` | Database port (5432) | Yes |
-| `DB_NAME` | Database name | Yes |
-| `DB_USER` | Database user | Yes |
-| `DB_PASSWORD` | Database password | Yes |
-| `BACKEND_PORT` | Backend port (8080) | No |
-| `FRONTEND_PORT` | Frontend port (3000/5173) | No |
-| `ML_SERVICE_PORT` | ML service port (8000) | No |
-| `JWT_SECRET` | JWT signing key (32+ chars) | Yes |
-| `WEATHER_API_KEY` | Weather API key | No |
-| `WEATHER_API_BASE_URL` | Weather API base URL | No |
-
-### Backend (backend/.env)
+### Backend (`backend/.env` or Environment)
 
 | Variable | Description | Default |
-|----------|-------------|---------|
-| `SERVER_PORT` | Server port | 8080 |
-| `SPRING_PROFILES_ACTIVE` | Active Spring profile | dev |
-| `SPRING_DATASOURCE_URL` | JDBC URL | jdbc:postgresql://localhost:5432/jalrakshak |
-| `SPRING_DATASOURCE_USERNAME` | DB username | postgres |
-| `SPRING_DATASOURCE_PASSWORD` | DB password | postgres |
-| `SPRING_JPA_HIBERNATE_DDL_AUTO` | Hibernate DDL mode | validate |
-| `JWT_SECRET` | JWT secret | (required) |
-| `JWT_EXPIRATION_MS` | Token expiry (ms) | 86400000 |
-| `ML_SERVICE_URL` | ML service URL | http://localhost:8000 |
+| :--- | :--- | :--- |
+| `SERVER_PORT` | HTTP server port | `8080` |
+| `SPRING_PROFILES_ACTIVE` | Active Spring Boot profile | `dev` |
+| `SPRING_DATASOURCE_URL` | PostgreSQL JDBC URL | `jdbc:postgresql://localhost:5432/jalrakshak` |
+| `SPRING_DATASOURCE_USERNAME` | Database user | `postgres` |
+| `SPRING_DATASOURCE_PASSWORD` | Database password | `postgres` |
+| `JWT_SECRET` | Secret key for signing JWTs (min 32 characters) | *Required* |
+| `JWT_EXPIRATION_MS` | JWT validity duration in milliseconds | `86400000` |
+| `ML_SERVICE_URL` | Base URL of the FastAPI inference service | `http://localhost:8000` |
+| `WEATHER_API_KEY` | External weather provider API key | — |
 
-### ML Service (ml-service/.env)
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `ML_SERVICE_HOST` | Bind host | 0.0.0.0 |
-| `ML_SERVICE_PORT` | Bind port | 8000 |
-| `MODEL_PATH` | Model file path | ./models/irrigation_model.pkl |
-| `MODEL_VERSION` | Model version | 1.0.0 |
-| `BACKEND_URL` | Backend URL | http://localhost:8080 |
-| `LOG_LEVEL` | Log level | INFO |
-
-### Frontend (frontend/.env.local)
+### ML Service (`ml-service/.env`)
 
 | Variable | Description | Default |
-|----------|-------------|---------|
-| `VITE_API_BASE_URL` | Backend API URL | http://localhost:8080/api |
-| `VITE_ML_SERVICE_URL` | ML service URL | http://localhost:8000 |
-| `VITE_APP_TITLE` | App title | JALRAKSHAK |
-| `VITE_APP_VERSION` | App version | 0.1.0 |
+| :--- | :--- | :--- |
+| `ML_SERVICE_HOST` | Bind address | `0.0.0.0` |
+| `ML_SERVICE_PORT` | Bind port | `8000` |
+| `MODEL_PATH` | Path to serialized model artifact | `./models/irrigation_model.pkl` |
+| `MODEL_VERSION` | Active model version identifier | `1.0.0` |
+| `BACKEND_URL` | Spring Boot backend URL | `http://localhost:8080` |
+| `LOG_LEVEL` | Application log level | `INFO` |
 
-## Health Endpoints
+### Frontend (`frontend/.env.local`)
 
-### Backend: `GET /api/health`
-
-```bash
-curl http://localhost:8080/api/health
-```
-
-Response:
-```json
-{
-  "status": "UP",
-  "service": "jalrakshak-backend",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "checks": {
-    "database": "UP",
-    "ml-service": "UP"
-  }
-}
-```
-
-### Backend: `GET /api/health/live` (Liveness Probe)
-
-```bash
-curl http://localhost:8080/api/health/live
-```
-
-Response:
-```json
-{
-  "status": "UP",
-  "service": "jalrakshak-backend",
-  "timestamp": "2024-01-15T10:30:00Z"
-}
-```
-
-### Backend: `GET /api/health/ready` (Readiness Probe)
-
-```bash
-curl http://localhost:8080/api/health/ready
-```
-
-Response (200 OK if ready, 503 if not):
-```json
-{
-  "status": "UP",
-  "service": "jalrakshak-backend",
-  "timestamp": "2024-01-15T10:30:00Z",
-  "checks": {
-    "database": "UP",
-    "ml-service": "UP"
-  }
-}
-```
-
-### ML Service: `GET /health`
-
-```bash
-curl http://localhost:8000/health
-```
-
-Response:
-```json
-{
-  "status": "healthy",
-  "service": "jalrakshak-ml-service",
-  "timestamp": "2024-01-15T10:30:00.000000Z"
-}
-```
-
-All endpoints return minimal information — no secrets, stack traces, or internal details.
-
-## Stopping Services
-
-### Without Docker
-
-Press `Ctrl+C` in each terminal where services are running.
-
-### With Docker (when available)
-
-```bash
-docker-compose down
-# Or with volumes:
-docker-compose down -v
-```
+| Variable | Description | Default |
+| :--- | :--- | :--- |
+| `VITE_API_BASE_URL` | Spring Boot REST API base URL | `http://localhost:8080/api` |
+| `VITE_ML_SERVICE_URL` | FastAPI ML service base URL | `http://localhost:8000` |
+| `VITE_APP_TITLE` | Application display title | `JALRAKSHAK` |
 
 ## Troubleshooting
 
-### Backend fails to start
-
-1. **Gradle not found**: Generate wrapper with `gradle wrapper --gradle-version 8.9` (requires Gradle installed)
-2. **Database connection refused**: Ensure PostgreSQL is running and credentials in `.env` are correct
-3. **Port 8080 in use**: Change `SERVER_PORT` in `backend/.env`
-4. **JWT_SECRET too short**: Must be at least 32 characters
-
-### ML Service fails to start
-
-1. **Python version mismatch**: Requires Python 3.13 (3.14 not supported by pydantic-core)
-2. **pydantic-core build fails**: Use Python 3.13 or set `PYO3_USE_ABI3_FORWARD_COMPATIBILITY=1`
-3. **Port 8000 in use**: Change `ML_SERVICE_PORT` in `ml-service/.env`
-4. **Import errors**: Ensure virtual environment is activated and dependencies installed
-
-### Frontend fails to start
-
-1. **Port 5173 in use**: Vite will auto-select next available port
-2. **API connection fails**: Verify `VITE_API_BASE_URL` in `frontend/.env.local` matches backend
-3. **Build errors**: Clear `node_modules` and `package-lock.json`, then `npm install`
-
-### Common Issues
-
-| Issue | Solution |
-|-------|----------|
-| "Command not found: gradle" | Install Gradle: `brew install gradle` (macOS) or download from gradle.org |
-| "pg_isready: not found" | Install PostgreSQL client tools |
-| "uvicorn: command not found" | Activate venv: `source venv/bin/activate` |
-| "Permission denied: ./gradlew" | Run `chmod +x gradlew` |
-| Tests fail with "config-both" | Remove inner `Config` class from Pydantic Settings, use `model_config` only |
-| `./gradlew test` fails with "Failed to load JUnit Platform" | Known Gradle 9.0 / Spring Boot 3.3.4 incompatibility. Use `./gradlew assemble` instead. |
-
-## CI/CD
-
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs on push/PR to `main` and `develop`:
-
-1. **Backend**: Gradle build + tests (JDK 21)
-2. **ML Service**: Ruff lint + MyPy type check + pytest (Python 3.13)
-3. **Frontend**: oxlint + vitest + Vite build (Node 20)
-4. **Summary**: Fails if any job fails
-
-## Phase 1 Acceptance Criteria
-
-- [x] Repository structure documented and matches existing project
-- [x] Environment examples contain placeholders only (no real secrets)
-- [x] Health endpoints work and return safe responses (Backend: UP, ML: healthy)
-- [x] README setup commands match actual configuration
-- [x] Available lint, tests, and builds run with real results reported
-- [x] Existing user changes preserved
-
-## Phase 2 Acceptance Criteria
-
-- [x] Database schema created with Flyway migrations for all core entities
-- [x] JPA entities implemented for users, farms, crop_cycles, weather_observations, sensor_readings, recommendations, recommendation_inputs, farmer_feedback, audit_events
-- [x] REST APIs implemented for all core entities with CRUD operations
-- [x] Farm ownership validation on all farm-specific endpoints
-- [x] Pagination and filtering on list endpoints
-- [x] Centralized error handling with consistent error responses
-- [x] CORS configured for React frontend (localhost:5173)
-- [x] JWT authentication implemented (register, login, token validation)
-- [x] ML service integration with backend (recommendation requests)
-- [x] ML service enhanced with heuristic-based prediction and proper error handling
-- [x] Frontend connected to backend APIs with live health status
-- [x] API client with environment-based configuration
-- [x] Flyway migrations for all core tables
-- [x] Health endpoints: `/health`, `/health/live`, `/health/ready`
-
-## Known Blockers
-
-1. **Docker unavailable**: Cannot verify Dockerfiles or docker-compose.yml. Provided for future use.
-2. **Gradle not pre-installed**: Backend build requires Gradle installation (`brew install gradle` or manual). Gradle wrapper (9.0) generated and working.
-3. **Python 3.14 incompatible**: ML service requires Python 3.13 (pydantic-core/PyO3 limitation). Python 3.13.7 verified working in venv.
-4. **Backend tests blocked**: `./gradlew test` fails due to Gradle 9.0 / JUnit Platform compatibility issue with Spring Boot 3.3.4. Use `./gradlew assemble` for verified builds. Tests will be fixed with updated Spring Boot version.
-
-## Next Steps (Phase 3)
-
-- Authentication enhancements (password reset, email verification)
-- Role-based access control (ADMIN endpoints)
-- Weather data integration (external API adapter)
-- Sensor data ingestion pipeline
-- Recommendation history and analytics dashboard
-- Farmer feedback collection and analysis
-
-## License
-
-Proprietary — Part of KrishiSetu Initiative
+| Symptom | Cause & Resolution |
+| :--- | :--- |
+| **Backend fails to start with JWT error** | Ensure `JWT_SECRET` is set and is at least 32 characters long. |
+| **Database connection refused** | Verify PostgreSQL 16 is running on port `5432` and the `jalrakshak` database exists. |
+| **`pydantic-core` fails to build in ML service** | Use Python `3.13` inside your virtual environment (`python3.13 -m venv venv`). Python 3.14 is not supported by pinned wheel versions. |
+| **Frontend shows `DOWN` for Backend or ML** | Confirm `VITE_API_BASE_URL` and `VITE_ML_SERVICE_URL` in `frontend/.env.local` match the running ports (`8080` and `8000`). |
+| **`Permission denied: ./gradlew`** | Grant execution permissions to the Gradle wrapper: `chmod +x backend/gradlew`. |
